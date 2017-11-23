@@ -29,11 +29,12 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation project(':eventbus')
-    annotationProcessor project(':eventbus-annotation-processor')
+//    implementation project(':eventbus')
+//    annotationProcessor project(':eventbus-annotation-processor')
 //    implementation 'org.greenrobot:eventbus:3.0.0'
 //    annotationProcessor 'org.greenrobot:eventbus-annotation-processor:3.0.1'
-
+    implementation 'com.github.lizhengxian1991.eventbusplus:eventbus:1.0.0'
+    annotationProcessor 'com.github.lizhengxian1991.eventbusplus:eventbus-annotation-processor:1.0.0'
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
 }
