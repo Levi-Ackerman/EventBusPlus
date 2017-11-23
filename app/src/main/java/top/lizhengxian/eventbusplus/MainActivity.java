@@ -2,6 +2,7 @@ package top.lizhengxian.eventbusplus;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -20,7 +21,9 @@ public class MainActivity extends AppCompatActivity {
         mPrintButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EventBus.getDefault().postSticky("Hello EventBusPlus!");
+                EventBus.getDefault().post(1,"Hello EventBusPlus!");
+//                EventBus.getDefault().post(2,"Hello EventBusPlus2!");
+                EventBus.getDefault().post("Hello EventBusPlus!3");
             }
         });
         findViewById(R.id.btn2).setOnClickListener(new View.OnClickListener() {
@@ -31,18 +34,20 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Subscribe()
+    @Subscribe(id = 1)
     public void printMessage(String message){
         Toast.makeText(this,message,Toast.LENGTH_LONG).show();
+        Log.e("lee..",message);
     }
 
-    @Subscribe
+    @Subscribe(id = 2)
     public void printMessage2(String message){
+        Log.e("lee..",message);
 
     }
 
-    @Subscribe
+    @Subscribe()
     public void printMes(Object o){
-
+        Log.e("lee..",o.toString());
     }
 }
