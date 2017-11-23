@@ -280,8 +280,9 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             String eventClass = getClassString(paramElement, myPackage) + ".class";
 
             Subscribe subscribe = method.getAnnotation(Subscribe.class);
+            int id = subscribe.id();
             List<String> parts = new ArrayList<>();
-            parts.add(callPrefix + "(\"" + methodName + "\",");
+            parts.add(callPrefix + "("+id+",\"" + methodName + "\",");
             String lineEnd = "),";
             if (subscribe.priority() == 0 && !subscribe.sticky()) {
                 if (subscribe.threadMode() == ThreadMode.POSTING) {

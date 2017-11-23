@@ -30,4 +30,14 @@ public class MainActivity extends AppCompatActivity {
     public void printMessage(String message){
         Toast.makeText(this,message,Toast.LENGTH_LONG).show();
     }
+
+    @Subscribe
+    public void printMessage2(String message){
+
+    }
+
+    @Subscribe
+    public void printMes(Object o){
+
+    }
 }
