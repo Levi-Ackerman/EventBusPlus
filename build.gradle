@@ -1,7 +1,15 @@
 buildscript {
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.0'
+    }
+
     ext {
         _buildToolsVersion = '26.0.3' // When updating, don't forget to adjust .travis.yml
         _compileSdkVersion = 26
+    }
+    repositories {
+        google()
+        jcenter()
     }
 }
 
