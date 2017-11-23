@@ -15,6 +15,8 @@
  */
 package org.greenrobot.eventbus;
 
+import org.greenrobot.eventbus.meta.Message;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,8 +48,8 @@ public class EventBus {
     private static final EventBusBuilder DEFAULT_BUILDER = new EventBusBuilder();
     private static final Map<Class<?>, List<Class<?>>> eventTypesCache = new HashMap<>();
 
-    private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
-    private final Map<Object, List<Class<?>>> typesBySubscriber;
+    private final Map<SubscriberMethod.IDEventPair, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
+    private final Map<Object, List<SubscriberMethod.IDEventPair>> typesBySubscriber;
     private final Map<Class<?>, Object> stickyEvents;
 
     private final ThreadLocal<PostingThreadState> currentPostingThreadState = new ThreadLocal<PostingThreadState>() {
@@ -147,16 +149,16 @@ public class EventBus {
 
     // Must be called in synchronized block
     private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
-        Class<?> eventType = subscriberMethod.eventType;
+        SubscriberMethod.IDEventPair idEventPair = subscriberMethod.iDEventPair;
         Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
-        CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
+        CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(idEventPair);
         if (subscriptions == null) {
             subscriptions = new CopyOnWriteArrayList<>();
-            subscriptionsByEventType.put(eventType, subscriptions);
+            subscriptionsByEventType.put(idEventPair, subscriptions);
         } else {
             if (subscriptions.contains(newSubscription)) {
-                throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
-                        + eventType);
+                throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to "
+                        + idEventPair);
             }
         }
 
@@ -168,12 +170,12 @@ public class EventBus {
             }
         }
 
-        List<Class<?>> subscribedEvents = typesBySubscriber.get(subscriber);
+        List<SubscriberMethod.IDEventPair> subscribedEvents = typesBySubscriber.get(idEventPair);
         if (subscribedEvents == null) {
             subscribedEvents = new ArrayList<>();
             typesBySubscriber.put(subscriber, subscribedEvents);
         }
-        subscribedEvents.add(eventType);
+        subscribedEvents.add(idEventPair);
 
         if (subscriberMethod.sticky) {
             if (eventInheritance) {
@@ -184,13 +186,13 @@ public class EventBus {
                 Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
                 for (Map.Entry<Class<?>, Object> entry : entries) {
                     Class<?> candidateEventType = entry.getKey();
-                    if (eventType.isAssignableFrom(candidateEventType)) {
+                    if (idEventPair.eventType.isAssignableFrom(candidateEventType)) {
                         Object stickyEvent = entry.getValue();
                         checkPostStickyEventToSubscription(newSubscription, stickyEvent);
                     }
                 }
             } else {
-                Object stickyEvent = stickyEvents.get(eventType);
+                Object stickyEvent = stickyEvents.get(idEventPair.eventType);
                 checkPostStickyEventToSubscription(newSubscription, stickyEvent);
             }
         }
@@ -219,8 +221,8 @@ public class EventBus {
     }
 
     /** Only updates subscriptionsByEventType, not typesBySubscriber! Caller must update typesBySubscriber. */
-    private void unsubscribeByEventType(Object subscriber, Class<?> eventType) {
-        List<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
+    private void unsubscribeByEventType(Object subscriber, SubscriberMethod.IDEventPair idEventPair) {
+        List<Subscription> subscriptions = subscriptionsByEventType.get(idEventPair);
         if (subscriptions != null) {
             int size = subscriptions.size();
             for (int i = 0; i < size; i++) {
@@ -237,10 +239,10 @@ public class EventBus {
 
     /** Unregisters the given subscriber from all event classes. */
     public synchronized void unregister(Object subscriber) {
-        List<Class<?>> subscribedTypes = typesBySubscriber.get(subscriber);
+        List<SubscriberMethod.IDEventPair> subscribedTypes = typesBySubscriber.get(subscriber);
         if (subscribedTypes != null) {
-            for (Class<?> eventType : subscribedTypes) {
-                unsubscribeByEventType(subscriber, eventType);
+            for (SubscriberMethod.IDEventPair idEventPair : subscribedTypes) {
+                unsubscribeByEventType(subscriber, idEventPair);
             }
             typesBySubscriber.remove(subscriber);
         } else {
@@ -248,11 +250,15 @@ public class EventBus {
         }
     }
 
+    public void post(Object event){
+        post(-1,event);
+    }
+
     /** Posts the given event to the event bus. */
-    public void post(Object event) {
+    public void post(int id, Object event) {
         PostingThreadState postingState = currentPostingThreadState.get();
-        List<Object> eventQueue = postingState.eventQueue;
-        eventQueue.add(event);
+        List<Message> eventQueue = postingState.eventQueue;
+        eventQueue.add(new Message(id, event));
 
         if (!postingState.isPosting) {
             postingState.isMainThread = isMainThread();
@@ -285,7 +291,7 @@ public class EventBus {
                     "This method may only be called from inside event handling methods on the posting thread");
         } else if (event == null) {
             throw new EventBusException("Event may not be null");
-        } else if (postingState.event != event) {
+        } else if (postingState.message != event) {
             throw new EventBusException("Only the currently handled event may be aborted");
         } else if (postingState.subscription.subscriberMethod.threadMode != ThreadMode.POSTING) {
             throw new EventBusException(" event handlers may only abort the incoming event");
@@ -373,8 +379,8 @@ public class EventBus {
         return false;
     }
 
-    private void postSingleEvent(Object event, PostingThreadState postingState) throws Error {
-        Class<?> eventClass = event.getClass();
+    private void postSingleEvent(Message event, PostingThreadState postingState) throws Error {
+        Class<?> eventClass = event.event.getClass();
         boolean subscriptionFound = false;
         if (eventInheritance) {
             List<Class<?>> eventTypes = lookupAllEventTypes(eventClass);
@@ -397,21 +403,22 @@ public class EventBus {
         }
     }
 
-    private boolean postSingleEventForEventType(Object event, PostingThreadState postingState, Class<?> eventClass) {
+    private boolean postSingleEventForEventType(Message message, PostingThreadState postingState, Class<?> eventClass) {
         CopyOnWriteArrayList<Subscription> subscriptions;
+        SubscriberMethod.IDEventPair idEventPair = new SubscriberMethod.IDEventPair(message.id,eventClass);
         synchronized (this) {
-            subscriptions = subscriptionsByEventType.get(eventClass);
+            subscriptions = subscriptionsByEventType.get(idEventPair);
         }
         if (subscriptions != null && !subscriptions.isEmpty()) {
             for (Subscription subscription : subscriptions) {
-                postingState.event = event;
+                postingState.message = message;
                 postingState.subscription = subscription;
                 boolean aborted = false;
                 try {
-                    postToSubscription(subscription, event, postingState.isMainThread);
+                    postToSubscription(subscription, message.event, postingState.isMainThread);
                     aborted = postingState.canceled;
                 } finally {
-                    postingState.event = null;
+                    postingState.message = null;
                     postingState.subscription = null;
                     postingState.canceled = false;
                 }
@@ -540,11 +547,11 @@ public class EventBus {
 
     /** For ThreadLocal, much faster to set (and get multiple values). */
     final static class PostingThreadState {
-        final List<Object> eventQueue = new ArrayList<>();
+        final List<Message> eventQueue = new ArrayList<>();
         boolean isPosting;
         boolean isMainThread;
         Subscription subscription;
-        Object event;
+        Message message;
         boolean canceled;
     }
 

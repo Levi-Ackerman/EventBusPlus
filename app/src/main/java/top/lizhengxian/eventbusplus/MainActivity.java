@@ -20,13 +20,18 @@ public class MainActivity extends AppCompatActivity {
         mPrintButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EventBus.getDefault().post("Hello EventBusPlus!");
+                EventBus.getDefault().postSticky("Hello EventBusPlus!");
             }
         });
-        EventBus.getDefault().register(this);
+        findViewById(R.id.btn2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EventBus.getDefault().register(MainActivity.this);
+            }
+        });
     }
 
-    @Subscribe
+    @Subscribe()
     public void printMessage(String message){
         Toast.makeText(this,message,Toast.LENGTH_LONG).show();
     }

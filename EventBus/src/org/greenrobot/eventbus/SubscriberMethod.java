@@ -24,6 +24,7 @@ public class SubscriberMethod {
     final Class<?> eventType;
     final int priority;
     final int id;
+    final IDEventPair iDEventPair;
     final boolean sticky;
     /** Used for efficient comparison */
     String methodString;
@@ -35,6 +36,7 @@ public class SubscriberMethod {
         this.priority = priority;
         this.sticky = sticky;
         this.id = id;
+        this.iDEventPair = new IDEventPair(id,eventType);
     }
 
     @Override
@@ -66,5 +68,41 @@ public class SubscriberMethod {
     @Override
     public int hashCode() {
         return method.hashCode();
+    }
+
+
+    public static class IDEventPair {
+        public int id;
+        public Class<?> eventType;
+
+        public IDEventPair(int id, Class<?> eventType) {
+            this.id = id;
+            this.eventType = eventType;
+        }
+
+        @Override
+        public String toString() {
+            return "IDEventPair{" +
+                    "id=" + id +
+                    ", eventType=" + eventType +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            IDEventPair that = (IDEventPair) o;
+
+            return id == that.id && (eventType != null ? eventType.equals(that.eventType) : that.eventType == null);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = id;
+            result = 31 * result + (eventType != null ? eventType.hashCode() : 0);
+            return result;
+        }
     }
 }
