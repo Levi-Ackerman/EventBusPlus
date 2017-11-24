@@ -20,7 +20,7 @@ dependencies {
     annotationProcessor 'com.github.lizhengxian1991.eventbusplus:eventbus-annotation-processor:1.0.0'
 }
 ```
-**3**. 在module的build.gradle中增加Processor参数，指定生成的Eventbus的索引类名
+**3**. 在module的build.gradle中增加Processor参数，指定生成的Eventbus的索引类名（替换```<Your index class name>```）
 ```
 android {
     ...
@@ -34,7 +34,7 @@ android {
     }
 }
 ```
-**4**. 在Application的onCreate方法中初始化索引（将<Your index class name>替换为3中定义的类）
+**4**. 在Application的onCreate方法中初始化索引（将```<Your index class name>```替换为3中定义的类）
 ```
 EventBus.builder().addIndex(new <Your index class name>()).installDefaultEventBus();
 ```
